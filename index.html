@@ -408,13 +408,21 @@ function renderDaily(){
 }
 
 // ── WEEKLY ────────────────────────────────────────────────────────────────────
+function weeksInMonth(mi,yr){
+  const dims=[31,28,31,30,31,30,31,31,30,31,30,31],days=dims[mi];
+  const wks=new Set();
+  for(let d=1;d<=days;d++) wks.add(isoWeek(new Date(yr,mi,d)));
+  return [...wks].sort((a,b)=>a-b);
+}
 function buildWeekPicker(){
-  const wks=[...new Set(RAW_DATA.employees.flatMap(e=>Object.keys(e.weekly_ot).map(Number)))].sort((a,b)=>a-b);
-  if(selWeek===null)selWeek=wks[wks.length-1];
+  const mi=curMonth-1,yr=2026;
+  const wks=weeksInMonth(mi,yr);
+  if(selWeek===null||!wks.includes(selWeek))selWeek=wks[wks.length-1];
   const wrap=document.getElementById('weekPicker');wrap.innerHTML='';
   wks.forEach(w=>{
+    const has=RAW_DATA.employees.some(e=>e.weekly_ot&&e.weekly_ot[String(w)]>0);
     const btn=document.createElement('button');
-    btn.className=`pk on${w===selWeek?' sel-y':''}`;
+    btn.className=`pk${has?' on':''}${w===selWeek?' sel-y':''}`;
     btn.textContent=`W${w}`;
     btn.onclick=()=>{selWeek=w;buildWeekPicker();renderWeekly();};
     wrap.appendChild(btn);
