@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>OT Monitor 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0d1117;--s1:#161b22;--s2:#1c2330;--s3:#21262d;
+  --border:#30363d;--text:#e6edf3;--dim:#8b949e;
+  --red:#f85149;--red-bg:rgba(248,81,73,0.1);--red-bd:rgba(248,81,73,0.3);
+  --yellow:#e3b341;--yellow-bg:rgba(227,179,65,0.1);--yellow-bd:rgba(227,179,65,0.3);
+  --green:#3fb950;--green-bg:rgba(63,185,80,0.1);--green-bd:rgba(63,185,80,0.3);
+  --blue:#58a6ff;--blue-bg:rgba(88,166,255,0.1);
+  --font:'Segoe UI',system-ui,sans-serif;--r:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+.hdr{background:var(--s1);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:0;flex-shrink:0;height:52px;}
+.logo{width:30px;height:30px;background:linear-gradient(135deg,#58a6ff,#3fb950);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-right:10px;}
+.hdr-title{font-size:14px;font-weight:700;margin-right:24px;}
+.tabs{display:flex;height:100%;overflow-x:auto;overflow-y:hidden;flex:1 1 auto;min-width:0;scrollbar-width:thin;}
+.tabs::-webkit-scrollbar{height:4px;}
+.tab{padding:0 18px;height:100%;border:none;background:none;color:var(--dim);font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--font);transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+.tab.active.tr{color:var(--red);border-bottom-color:var(--red);}
+.tab.active.ty{color:var(--yellow);border-bottom-color:var(--yellow);}
+.tab.active.tg{color:var(--green);border-bottom-color:var(--green);}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.btn{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-size:12px;cursor:pointer;font-family:var(--font);transition:all .15s;display:inline-flex;align-items:center;gap:5px;}
+.btn:hover{border-color:var(--blue);color:var(--blue);}
+.btn-up{border-color:var(--green-bd);color:var(--green);}
+.btn-up:hover{border-color:var(--green);background:var(--green-bg);}
+.sel{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:6px;font-size:12px;font-family:var(--font);}
+.file-info{font-size:11px;color:var(--green);display:none;align-items:center;gap:4px;}
+
+.page{display:none;flex:1;overflow:hidden;flex-direction:column;}
+.page.active{display:flex;}
+.page-inner{flex:1;overflow:hidden;display:grid;padding:14px 16px;gap:12px;}
+
+.kpi-bar{display:flex;gap:10px;flex-shrink:0;}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;flex:1;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--kc,var(--blue));}
+.kpi.r{--kc:var(--red);}.kpi.y{--kc:var(--yellow);}.kpi.g{--kc:var(--green);}
+.kpi-lbl{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.kpi-val{font-size:22px;font-weight:700;line-height:1;letter-spacing:-1px;}
+.kpi-sub{font-size:10px;color:var(--dim);margin-top:3px;}
+
+.card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);display:flex;flex-direction:column;overflow:hidden;}
+.card-hdr{padding:9px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;background:var(--s2);}
+.card-title{font-size:12px;font-weight:700;}
+.card-sub{font-size:11px;color:var(--dim);margin-left:auto;}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.card-body{flex:1;overflow:hidden;padding:10px 12px;position:relative;}
+.chart-wrap{width:100%;height:100%;}
+.tbl-wrap{height:100%;overflow-y:auto;}
+
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);border-bottom:1px solid var(--border);background:var(--s3);font-weight:600;position:sticky;top:0;z-index:1;white-space:nowrap;}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:rgba(255,255,255,0.02);}
+
+.pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;white-space:nowrap;}
+.pill.r{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);}
+.pill.y{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-bd);}
+.pill.g{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);}
+.pill.d{background:var(--s3);color:var(--dim);}
+
+.prog{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:2px;}
+.prog-f{height:100%;border-radius:3px;transition:width .3s;}
+
+.picker{display:flex;flex-wrap:wrap;gap:3px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.pk{padding:3px 7px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--dim);font-size:11px;cursor:pointer;font-family:var(--font);transition:all .12s;}
+.pk:hover{color:var(--text);border-color:var(--blue);}
+.pk.on{background:var(--s2);color:var(--text);}
+.pk.sel-r{border-color:var(--red);color:var(--red);background:var(--red-bg);font-weight:700;}
+.pk.sel-y{border-color:var(--yellow);color:var(--yellow);background:var(--yellow-bg);font-weight:700;}
+
+.adj-col{border-radius:var(--r);padding:12px 14px;border:1px solid;overflow-y:auto;}
+.adj-col.r{background:var(--red-bg);border-color:var(--red-bd);}
+.adj-col.y{background:var(--yellow-bg);border-color:var(--yellow-bd);}
+.adj-col.g{background:var(--green-bg);border-color:var(--green-bd);}
+.adj-hdr{font-size:12px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.adj-col.r .adj-hdr{color:var(--red);}
+.adj-col.y .adj-hdr{color:var(--yellow);}
+.adj-col.g .adj-hdr{color:var(--green);}
+.adj-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+.adj-row:last-child{border-bottom:none;}
+.adj-name{font-size:12px;font-weight:600;}
+.adj-id{font-size:10px;color:var(--dim);}
+.adj-val{font-size:14px;font-weight:700;text-align:right;}
+.adj-diff{font-size:10px;color:var(--dim);}
+.adj-empty{font-size:11px;color:var(--dim);padding:10px 0;}
+
+.note-in{width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:4px;font-size:11px;font-family:var(--font);resize:none;}
+.note-in:focus{outline:none;border-color:var(--blue);}
+
+.toast{position:fixed;bottom:16px;right:16px;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:9px 14px;font-size:12px;z-index:9999;opacity:0;transform:translateY(6px);transition:all .25s;pointer-events:none;}
+.toast.show{opacity:1;transform:none;}
+.toast.ok{border-color:var(--green-bd);color:var(--green);}
+.toast.err{border-color:var(--red-bd);color:var(--red);}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+@media (max-width: 900px){
+  .hdr{padding:0 10px;gap:6px;}
+  .hdr-title{display:none;}
+  .tab{padding:0 12px;font-size:12px;}
+  .btn{padding:5px 8px;font-size:11px;}
+  .sel{padding:5px 6px;font-size:11px;}
+  .file-info{display:none !important;}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="logo">⏱</div>
+  <div class="hdr-title">OT Monitor 2026</div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('dashboard',this)">🏠 Dashboard</button>
+    <button class="tab" onclick="switchTab('daily',this)">📅 Daily</button>
+    <button class="tab" onclick="switchTab('weekly',this)">📆 Weekly</button>
+    <button class="tab" onclick="switchTab('monthly',this)">🗓 Monthly</button>
+    <button class="tab" onclick="switchTab('adjust',this)">🎯 Action Plan</button>
+    <button class="tab" onclick="switchTab('forecast',this)">📈 Forecast</button>
+  </div>
+  <div class="hdr-right">
+    <div class="file-info" id="fileInfo">📄 <span id="fileName"></span></div>
+    <div class="file-info" id="lastUpdated" style="font-size:11px;opacity:0.7;"></div>
+    <select class="sel" id="selMonth" onchange="onMonthChange()">
+      <option value="1">January</option><option value="2">February</option>
+      <option value="3">March</option><option value="4">April</option>
+      <option value="5">May</option><option value="6" selected>June</option>
+      <option value="7">July</option><option value="8">August</option>
+      <option value="9">September</option><option value="10">October</option>
+      <option value="11">November</option><option value="12">December</option>
+    </select>
+    <button class="btn btn-up" onclick="document.getElementById('xlIn').click()" title="Preview only in this browser — does not update the shared dashboard">👁 Preview Excel Locally</button>
+    <input type="file" id="xlIn" accept=".xlsx,.xls" style="display:none" onchange="handleUpload(event)">
+    <button class="btn" onclick="doExport()">⬇ Export</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="page active" id="pageDashboardEl">
+  <div style="padding:14px 16px;height:100%;display:flex;flex-direction:column;gap:12px;overflow-y:auto;box-sizing:border-box;">
+    <div class="kpi-bar" id="kpiDash"></div>
+    <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:12px;flex-shrink:0;">
+      <div class="card">
+        <div class="card-hdr"><span class="dot" style="background:var(--blue)"></span><span class="card-title">Weekly OT Trend — Team Total</span><span class="card-sub">All weeks · 2026</span></div>
+        <div style="padding:10px 12px;">
+          <div style="position:relative;width:100%;height:300px;">
+            <canvas id="cDashWeek" role="img" aria-label="Weekly OT trend"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><span class="dot" style="background:var(--red)"></span><span class="card-title">Top 10 Highest OT Employees</span><span class="card-sub" id="dashTop10Sub">Year-to-date</span></div>
+        <div style="padding:10px 12px;">
+          <div style="position:relative;width:100%;height:300px;">
+            <canvas id="cDashTop10" role="img" aria-label="Top 10"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;flex-shrink:0;">
+      <div class="card">
+        <div class="card-hdr"><span class="dot" style="background:var(--blue)"></span><span class="card-title">Monthly OT by Month</span><span class="card-sub">Team total Jan–Jun</span></div>
+        <div style="padding:10px 12px;">
+          <div style="position:relative;width:100%;height:260px;">
+            <canvas id="cDashMonth" role="img" aria-label="Monthly OT"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><span class="dot" style="background:var(--yellow)"></span><span class="card-title">Status Distribution</span><span class="card-sub" id="dashStatusSub"></span></div>
+        <div style="padding:10px 12px;">
+          <div style="position:relative;width:100%;height:260px;">
+            <canvas id="cDashStatus" role="img" aria-label="Status"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><span class="dot" style="background:var(--green)"></span><span class="card-title">Weekday OT vs Benefit (Weekend)</span><span class="card-sub" id="dashWDWESub"></span></div>
+        <div style="padding:10px 12px;">
+          <div style="position:relative;width:100%;height:260px;">
+            <canvas id="cDashWDWE" role="img" aria-label="Weekday vs weekend"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- DAILY -->
+<div class="page" id="pageDailyEl">
+  <div class="page-inner" style="grid-template-rows:auto auto 1fr;">
+    <div class="kpi-bar" id="kpiDaily"></div>
+    <div class="card" style="flex-direction:row;align-items:center;">
+      <div class="picker" id="dayPicker" style="border:none;flex:1;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px;min-height:0;">
+      <div class="card">
+        <div class="card-hdr"><span class="dot" style="background:var(--red)"></span><span class="card-title" id="dailyChartTitle">Daily OT</span><span class="card-sub">Target: 2h / person</span></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="cDaily" role="img" aria-label="Daily OT per person"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><span class="dot" style="background:var(--blue)"></span><span class="card-title">Detail</span><span class="card-sub" id="dailyTblSub"></span></div>
+        <div class="card-body" style="padding:0;"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Employee</th><th>OT</th><th>vs Target</th><th>Progress</th><th>Status</th></tr></thead><tbody id="tblDailyB"></tbody></table></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WEEKLY -->
+<div class="page" id="pageWeeklyEl">
+  <div class="page-inner" style="grid-template-rows:auto auto 1fr;">
+    <div class="kpi-bar" id="kpiWeekly"></div>
+    <div class="card" style="flex-direction:row;align-items:center;">
+      <div class="picker" id="weekPicker" style="border:none;flex:1;"></div>
+      <label style="display:flex;align-items:center;gap:6px;padding:0 14px;font-size:12px;color:var(--dim);white-space:nowrap;cursor:pointer;">
+        <input type="checkbox" id="includeBenefitToggle" checked onchange="onBenefitToggle()" style="cursor:pointer;">
+        Include Benefit (weekend OT)
+      </label>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px;min-height:0;">
+      <div class="card">
+        <div class="card-hdr"><span class="dot" style="background:var(--yellow)"></span><span class="card-title" id="weeklyChartTitle">Weekly OT</span><span class="card-sub">Target: 40h / person / week</span></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="cWeekly" role="img" aria-label="Weekly OT per person"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><span class="dot" style="background:var(--blue)"></span><span class="card-title">Detail</span><span class="card-sub" id="weeklyTblSub"></span></div>
+        <div class="card-body" style="padding:0;"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Employee</th><th>Weekly OT</th><th>Benefit (Weekend)</th><th>vs Target</th><th>Month-to-date</th><th>Remaining</th><th>Status</th></tr></thead><tbody id="tblWeeklyB"></tbody></table></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MONTHLY -->
+<div class="page" id="pageMonthlyEl">
+  <div class="page-inner" style="grid-template-rows:auto 1fr;">
+    <div class="kpi-bar" id="kpiMonthly"></div>
+    <div style="display:grid;grid-template-columns:1fr 1.8fr;gap:12px;min-height:0;">
+      <div class="card">
+        <div class="card-hdr"><span class="dot" style="background:var(--red)"></span><span class="card-title" id="monthlyChartTitle">Monthly OT</span><span class="card-sub">Target: 40h / person / month (Mon–Sun)</span></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="cMonthly" role="img" aria-label="Monthly OT per person"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><span class="dot" style="background:var(--blue)"></span><span class="card-title">Detail</span><span class="card-sub" id="monthlyTblSub"></span></div>
+        <div class="card-body" style="padding:0;"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Employee</th><th>Position</th><th>Monthly OT</th><th>Benefit</th><th>Used %</th><th>Remaining</th><th>Year OT</th><th>Status</th><th>Notes</th></tr></thead><tbody id="tblMonthlyB"></tbody></table></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ACTION PLAN -->
+<div class="page" id="pageAdjustEl">
+  <div class="page-inner" style="grid-template-rows:auto 1fr;">
+    <div class="kpi-bar" id="kpiAdjust"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;min-height:0;">
+      <div class="adj-col r" id="adjStop"></div>
+      <div class="adj-col y" id="adjWatch"></div>
+      <div class="adj-col g" id="adjFree"></div>
+    </div>
+  </div>
+</div>
+
+<!-- FORECAST -->
+<div class="page" id="pageForecastEl">
+  <div class="page-inner" style="grid-template-rows:auto 1fr;">
+    <div class="kpi-bar" id="kpiForecast"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;min-height:0;">
+      <div style="display:grid;grid-template-rows:1fr 1fr;gap:12px;min-height:0;">
+        <div class="card">
+          <div class="card-hdr"><span class="dot" style="background:var(--yellow)"></span><span class="card-title">Who will exceed monthly limit?</span><span class="card-sub" id="fcSub1"></span></div>
+          <div class="card-body" style="padding:0;"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Employee</th><th>Current</th><th>Projected</th><th>Rate/day</th><th>Days left</th><th>Risk</th></tr></thead><tbody id="tblAtRisk"></tbody></table></div></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><span class="dot" style="background:var(--blue)"></span><span class="card-title">6-Month Team OT Trend</span></div>
+          <div class="card-body"><div class="chart-wrap"><canvas id="cFc6M" role="img" aria-label="6 month trend"></canvas></div></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-rows:1.4fr 1fr;gap:12px;min-height:0;">
+        <div class="card">
+          <div class="card-hdr"><span class="dot" style="background:var(--red)"></span><span class="card-title">End-of-month projection — per person</span><span class="card-sub" id="fcSub2"></span></div>
+          <div class="card-body" style="overflow-y:auto;" id="fcBarsBody"></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><span class="dot" style="background:var(--red)"></span><span class="card-title">Yearly pace — who will exceed 300h?</span><span class="card-sub">Based on current rate</span></div>
+          <div class="card-body" style="overflow-y:auto;" id="fcYearBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const RAW_DATA = {"employees": [], "updatedAt": null, "fileName": ""};
+Chart.defaults.animation = false;
+Chart.defaults.devicePixelRatio = 1;
+let MT=40,WT=40,DT=2,YT=300;
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+let curMonth=6,selDay=null,selWeek=null,charts={},notes={};
+const short=n=>{const p=n.trim().split(' ');return p.length<=2?n:p[0]+' '+p[p.length-1];};
+const fmt=n=>(+n).toLocaleString(undefined,{maximumFractionDigits:1});
+const clr=(v,t)=>v>t?'var(--red)':v>=t*.8?'var(--yellow)':'var(--green)';
+const dc=(v,t)=>v>t?'rgba(248,81,73,0.9)':v>=t*.8?'rgba(227,179,65,0.9)':'rgba(63,185,80,0.9)';
+const cc={grid:'rgba(255,255,255,0.05)',tick:'#8b949e',tip:'#161b22'};
+let toastT;
+function toast(m,t='ok'){const el=document.getElementById('toast');el.textContent=m;el.className=`toast show ${t}`;clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2800);}
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function isoWeek(d){const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=dt.getUTCDay()||7;dt.setUTCDate(dt.getUTCDate()+4-day);const ys=new Date(Date.UTC(dt.getUTCFullYear(),0,1));return Math.ceil((((dt-ys)/86400000)+1)/7);}
+function kpiHtml(arr){return arr.map(k=>`<div class="kpi ${k.cls||''}"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');}
+
+function lolliChart(id,labels,vals,target,tColor,yLbl,empArr){
+  destroyChart(id);
+  const colors=vals.map(v=>dc(v,target));
+  charts[id]=new Chart(document.getElementById(id).getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {data:vals,backgroundColor:colors,barThickness:2,borderSkipped:false},
+      {data:vals,type:'scatter',backgroundColor:colors,pointRadius:7,pointHoverRadius:10},
+      {data:labels.map(()=>target),type:'line',borderColor:tColor,borderWidth:2,borderDash:[5,3],pointRadius:0,fill:false,tension:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{backgroundColor:cc.tip,titleColor:'#e6edf3',bodyColor:cc.tick,borderColor:'#30363d',borderWidth:1,
+          callbacks:{
+            title:i=>i[0].datasetIndex===2?'Target':(empArr[i[0].dataIndex]?.name||''),
+            label:i=>{if(i.datasetIndex===2)return`Target: ${target}h`;const v=i.raw,d=(v-target).toFixed(1);return[`OT: ${v}h`,+d>0?`⚠ Over by ${d}h`:+d===0?`✓ On target`:`✓ ${Math.abs(d)}h remaining`];}
+          }
+        }
+      },
+      scales:{
+        x:{grid:{color:cc.grid},ticks:{color:cc.tick,font:{size:9},maxRotation:40}},
+        y:{min:0,grid:{color:cc.grid},ticks:{color:cc.tick,font:{size:10}},title:{display:true,text:yLbl,color:cc.tick,font:{size:10}}}
+      }
+    }
+  });
+}
+
+// ── DAILY ─────────────────────────────────────────────────────────────────────
+function buildDayPicker(){
+  const mi=curMonth-1,yr=2026,dims=[31,28,31,30,31,30,31,31,30,31,30,31],days=dims[mi];
+  if(selDay===null){for(let d=days;d>=1;d--){const k=`${yr}-${String(mi+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(RAW_DATA.employees.some(e=>e.daily_ot&&e.daily_ot[k]>0)){selDay=d;break;}}}
+  const wrap=document.getElementById('dayPicker');wrap.innerHTML='';
+  for(let d=1;d<=days;d++){
+    const k=`${yr}-${String(mi+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const has=RAW_DATA.employees.some(e=>e.daily_ot&&e.daily_ot[k]>0);
+    const isWE=new Date(yr,mi,d).getDay()%6===0;
+    const btn=document.createElement('button');
+    btn.className=`pk${has?' on':''}${d===selDay?' sel-r':''}`;
+    btn.textContent=d;
+    btn.onclick=()=>{selDay=d;buildDayPicker();renderDaily();};
+    wrap.appendChild(btn);
+  }
+}
+
+function renderDaily(){
+  const mi=curMonth-1,yr=2026;
+  if(selDay===null)return;
+  const k=`${yr}-${String(mi+1).padStart(2,'0')}-${String(selDay).padStart(2,'0')}`;
+  const dow=new Date(yr,mi,selDay).getDay();
+  const lbl=`${DN[dow]} ${selDay}/${mi+1}/${yr}`;
+  document.getElementById('dailyChartTitle').textContent=`Daily OT — ${lbl}`;
+  const all=RAW_DATA.employees.map(e=>({...e,val:e.daily_ot?(e.daily_ot[k]||0):0}));
+  const with_=all.filter(e=>e.val>0).sort((a,b)=>b.val-a.val);
+  const no_=all.filter(e=>e.val===0);
+  const over=with_.filter(e=>e.val>DT).length,tot=with_.reduce((s,e)=>s+e.val,0);
+  document.getElementById('kpiDaily').innerHTML=kpiHtml([
+    {cls:'r',lbl:'🔴 Over 2h target',val:over,sub:'employees exceeded limit'},
+    {cls:'g',lbl:'🟢 On / Under target',val:with_.filter(e=>e.val<=DT).length,sub:'employees within range'},
+    {lbl:'👤 Working OT today',val:with_.length,sub:`out of ${all.length} total`},
+    {lbl:'⏱ Total OT today',val:fmt(tot)+'h',sub:`avg ${with_.length?(tot/with_.length).toFixed(1):0}h`},
+    {cls:over>0?'r':'g',lbl:'📋 Status',val:over>0?'Action needed':'All clear',sub:over>0?`${over} over target`:'Everyone within limit'},
+  ]);
+  document.getElementById('dailyTblSub').textContent=`${with_.length} working OT · ${no_.length} no OT`;
+  if(!with_.length){destroyChart('cDaily');document.getElementById('tblDailyB').innerHTML=`<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--dim)">No OT data for this day</td></tr>`;return;}
+  lolliChart('cDaily',with_.map(e=>short(e.name)),with_.map(e=>e.val),DT,'#e24b4a','OT Hours',with_);
+  document.getElementById('tblDailyB').innerHTML=[...with_,...no_].map((e,i)=>{
+    if(!e.val)return`<tr style="opacity:.3"><td style="color:var(--dim)">${i+1}</td><td>${e.name}</td><td colspan="4" style="color:var(--dim)">No OT</td></tr>`;
+    const d=(e.val-DT).toFixed(1),pct=Math.min(150,(e.val/DT)*100),c=clr(e.val,DT);
+    const badge=e.val>DT?`<span class="pill r">🔴 Over ${d}h</span>`:e.val===DT?`<span class="pill g">✅ On target</span>`:`<span class="pill y">🟡 Under ${Math.abs(d)}h</span>`;
+    return`<tr><td style="color:var(--dim)">${i+1}</td>
+      <td><b>${e.name}</b><div style="font-size:10px;color:var(--dim)">${e.id}</div></td>
+      <td style="font-size:18px;font-weight:700;color:${c}">${e.val}h</td>
+      <td style="font-weight:700;color:${c}">${+d>0?'+'+d:d}h</td>
+      <td style="min-width:100px"><div class="prog"><div class="prog-f" style="width:${Math.min(100,pct)}%;background:${c}"></div></div><div style="font-size:9px;color:var(--dim);margin-top:1px">${pct.toFixed(0)}% of ${DT}h</div></td>
+      <td>${badge}</td></tr>`;
+  }).join('');
+}
+
+// ── WEEKLY ────────────────────────────────────────────────────────────────────
+function buildWeekPicker(){
+  const wks=[...new Set(RAW_DATA.employees.flatMap(e=>Object.keys(e.weekly_ot).map(Number)))].sort((a,b)=>a-b);
+  if(selWeek===null)selWeek=wks[wks.length-1];
+  const wrap=document.getElementById('weekPicker');wrap.innerHTML='';
+  wks.forEach(w=>{
+    const btn=document.createElement('button');
+    btn.className=`pk on${w===selWeek?' sel-y':''}`;
+    btn.textContent=`W${w}`;
+    btn.onclick=()=>{selWeek=w;buildWeekPicker();renderWeekly();};
+    wrap.appendChild(btn);
+  });
+}
+
+function onBenefitToggle(){ renderWeekly(); }
+
+function renderWeekly(){
+  const mi=curMonth-1;
+  if(selWeek===null)return;
+  const includeBenefit = document.getElementById('includeBenefitToggle')?.checked ?? true;
+  document.getElementById('weeklyChartTitle').textContent=`Weekly OT — W${selWeek}${includeBenefit?'':' (excl. Benefit)'}`;
+
+  const all=RAW_DATA.employees.map(e=>{
+    const totalWk = +(e.weekly_ot[String(selWeek)]||0);
+    const benefitWk = +(e.weekly_benefit ? (e.weekly_benefit[String(selWeek)]||0) : 0);
+    const weekdayWk = +(totalWk - benefitWk).toFixed(1);
+    const val = includeBenefit ? totalWk : weekdayWk;
+    return {...e, val, benefitWk, weekdayWk, totalWk, mon:e.monthly_ots[mi]||0};
+  });
+
+  const with_=all.filter(e=>e.val>0||e.benefitWk>0).sort((a,b)=>b.val-a.val);
+  const no_=all.filter(e=>e.val===0&&e.benefitWk===0);
+  const over=with_.filter(e=>e.val>WT).length,tot=with_.reduce((s,e)=>s+e.val,0);
+  const totBenefit=with_.reduce((s,e)=>s+e.benefitWk,0);
+
+  document.getElementById('kpiWeekly').innerHTML=kpiHtml([
+    {cls:'r',lbl:'🔴 Over 40h target',val:over,sub:'employees exceeded limit'},
+    {cls:'y',lbl:'🟡 Near limit',val:with_.filter(e=>e.val>=WT*.8&&e.val<=WT).length,sub:'80–100% of target'},
+    {cls:'g',lbl:'🟢 Safe',val:with_.filter(e=>e.val<WT*.8).length,sub:'under 80% target'},
+    {lbl:'⏱ Total OT this week',val:fmt(tot)+'h',sub:`W${selWeek}${includeBenefit?' (incl. Benefit)':''}`},
+    {lbl:'🎁 Total Benefit (Weekend)',val:fmt(totBenefit)+'h',sub:'weekend OT this week'},
+  ]);
+  document.getElementById('weeklyTblSub').textContent=`${with_.length} employees · W${selWeek}`;
+
+  if(!with_.length){
+    destroyChart('cWeekly');
+    document.getElementById('tblWeeklyB').innerHTML=`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--dim)">No OT data for this week</td></tr>`;
+    return;
+  }
+
+  lolliChart('cWeekly',with_.map(e=>short(e.name)),with_.map(e=>e.val),WT,'#e3b341','OT Hours / Week',with_);
+
+  document.getElementById('tblWeeklyB').innerHTML=[...with_,...no_].map((e,i)=>{
+    if(!e.val&&!e.benefitWk)return`<tr style="opacity:.3"><td style="color:var(--dim)">${i+1}</td><td>${e.name}</td><td colspan="6" style="color:var(--dim)">No OT this week</td></tr>`;
+    const d=(e.val-WT).toFixed(1),rem=(MT-e.mon).toFixed(1),c=clr(e.val,WT),mc=clr(e.mon,MT);
+    const badge=e.val>WT?`<span class="pill r">🔴 Over ${d}h</span>`:e.val>=WT*.8?`<span class="pill y">🟡 Near</span>`:`<span class="pill g">🟢 OK</span>`;
+    return`<tr><td style="color:var(--dim)">${i+1}</td>
+      <td><b>${e.name}</b><div style="font-size:10px;color:var(--dim)">${e.id}</div></td>
+      <td style="font-size:17px;font-weight:700;color:${c}">${e.val}h</td>
+      <td style="font-weight:600;color:var(--yellow)">${e.benefitWk>0?e.benefitWk+'h':'—'}</td>
+      <td style="font-weight:700;color:${c}">${+d>0?'+'+d:d}h</td>
+      <td style="font-weight:600;color:${mc}">${e.mon}h</td>
+      <td style="font-weight:600;color:${+rem<0?'var(--red)':'var(--green)'}">${+rem>=0?'+'+rem:rem}h</td>
+      <td>${badge}</td></tr>`;
+  }).join('');
+}
+
+// ── MONTHLY ───────────────────────────────────────────────────────────────────
+function renderMonthly(){
+  const mi=curMonth-1;
+  const all=[...RAW_DATA.employees].map(e=>{
+    const mon = e.monthly_ots[mi]||0;
+    // Sum benefit (weekend OT) for all weeks that fall in this month
+    let benefit = 0;
+    if (e.weekly_benefit) {
+      Object.keys(e.weekly_benefit).forEach(wk => {
+        // approximate: count a week's benefit if any of its weekend days fall in this month.
+        // Simpler reliable approach: use weekend_ot_by_month directly (already monthly-bucketed).
+      });
+    }
+    benefit = e.weekend_ot_by_month ? (e.weekend_ot_by_month[mi]||0) : 0;
+    return {...e, mon, benefit};
+  }).sort((a,b)=>b.mon-a.mon);
+
+  const over=all.filter(e=>e.mon>MT).length,near=all.filter(e=>e.mon>=MT*.8&&e.mon<=MT).length;
+  const tot=all.reduce((s,e)=>s+e.mon,0);
+  const totBenefit=all.reduce((s,e)=>s+e.benefit,0);
+
+  document.getElementById('monthlyChartTitle').textContent=`Monthly OT — ${MN[mi]} 2026`;
+  document.getElementById('kpiMonthly').innerHTML=kpiHtml([
+    {cls:'r',lbl:'🔴 Over 40h limit',val:over,sub:'employees exceeded target'},
+    {cls:'y',lbl:'🟡 Near limit',val:near,sub:'80–100% of target'},
+    {cls:'g',lbl:'🟢 Safe',val:all.filter(e=>e.mon<MT*.8&&e.mon>0).length,sub:'under 80% target'},
+    {lbl:'⏱ Total OT',val:fmt(tot)+'h',sub:`avg ${all.length?(tot/all.length).toFixed(1):0}h / person`},
+    {lbl:'🎁 Total Benefit',val:fmt(totBenefit)+'h',sub:'weekend OT this month'},
+  ]);
+  document.getElementById('monthlyTblSub').textContent=`${MN[mi]} 2026 · ${all.length} employees`;
+  lolliChart('cMonthly',all.map(e=>short(e.name)),all.map(e=>e.mon),MT,'#e24b4a','OT Hours / Month',all);
+  document.getElementById('tblMonthlyB').innerHTML=all.map((e,i)=>{
+    const m=e.mon,pct=Math.min(150,(m/MT)*100),rem=(MT-m).toFixed(1),c=clr(m,MT),yc=clr(e.year_ot,YT);
+    const badge=m>MT?`<span class="pill r">🛑 Stop OT</span>`:m>=MT*.8?`<span class="pill y">👀 Monitor</span>`:m>0?`<span class="pill g">✅ Available</span>`:`<span class="pill d">— No OT</span>`;
+    return`<tr><td style="color:var(--dim)">${i+1}</td>
+      <td><b>${e.name}</b><div style="font-size:10px;color:var(--dim)">${e.id}</div></td>
+      <td style="color:var(--dim);font-size:11px">${e.position||'—'}</td>
+      <td style="font-size:17px;font-weight:700;color:${c}">${m}h</td>
+      <td style="font-weight:600;color:var(--yellow)">${e.benefit>0?e.benefit+'h':'—'}</td>
+      <td style="min-width:80px"><div style="font-size:11px;font-weight:600;color:${c}">${pct.toFixed(0)}%</div><div class="prog"><div class="prog-f" style="width:${Math.min(100,pct)}%;background:${c}"></div></div></td>
+      <td style="font-weight:600;color:${+rem<0?'var(--red)':'var(--green)'}">${+rem>=0?'+'+rem:rem}h</td>
+      <td style="font-weight:600;color:${yc}">${e.year_ot}h</td>
+      <td>${badge}</td>
+      <td><textarea class="note-in" rows="1" placeholder="Add note..." onchange="notes['${e.id}']=this.value">${notes[e.id]||''}</textarea></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── ACTION PLAN ───────────────────────────────────────────────────────────────
+function renderAdjust(){
+  const mi=curMonth-1;
+  const all=RAW_DATA.employees.map(e=>({...e,mon:e.monthly_ots[mi]||0}));
+  const stop =all.filter(e=>e.mon>MT).sort((a,b)=>b.mon-a.mon);
+  const watch =all.filter(e=>e.mon>=MT*.8&&e.mon<=MT).sort((a,b)=>b.mon-a.mon);
+  const free  =all.filter(e=>e.mon<MT*.8).sort((a,b)=>a.mon-b.mon);
+  document.getElementById('kpiAdjust').innerHTML=kpiHtml([
+    {cls:'r',lbl:'🛑 Stop OT immediately',val:stop.length,sub:`exceeded ${MT}h limit`},
+    {cls:'y',lbl:'👀 Monitor closely',val:watch.length,sub:`80–100% of ${MT}h`},
+    {cls:'g',lbl:'📈 Can take more OT',val:free.length,sub:`under 80% of ${MT}h`},
+    {lbl:'👥 Total employees',val:all.length,sub:`${MN[mi]} 2026`},
+    {cls:stop.length>0?'r':watch.length>0?'y':'g',lbl:'📋 Action required',val:stop.length+watch.length,sub:`${stop.length} stop · ${watch.length} monitor`},
+  ]);
+  function rows(list,diffFn){
+    if(!list.length)return`<div class="adj-empty">✅ No employees in this group</div>`;
+    return list.map(e=>`<div class="adj-row">
+      <div><div class="adj-name">${e.name}</div><div class="adj-id">${e.id} · ${e.position||'—'}</div></div>
+      <div><div class="adj-val" style="color:${clr(e.mon,MT)}">${e.mon}h</div><div class="adj-diff">${diffFn(e)}</div></div>
+    </div>`).join('');
+  }
+  document.getElementById('adjStop').innerHTML =`<div class="adj-hdr">🛑 Stop OT immediately (${stop.length})<br><span style="font-size:10px;font-weight:400;opacity:.7">Exceeded 40h — no more OT next week</span></div>`+rows(stop,e=>`Over by ${(e.mon-MT).toFixed(1)}h`);
+  document.getElementById('adjWatch').innerHTML=`<div class="adj-hdr">👀 Monitor closely (${watch.length})<br><span style="font-size:10px;font-weight:400;opacity:.7">80–100% of target — watch daily</span></div>`+rows(watch,e=>`${(MT-e.mon).toFixed(1)}h remaining`);
+  document.getElementById('adjFree').innerHTML =`<div class="adj-hdr">📈 Available for more OT (${free.length})<br><span style="font-size:10px;font-weight:400;opacity:.7">Prioritize these for upcoming shifts</span></div>`+rows(free,e=>`${(MT-e.mon).toFixed(1)}h remaining`);
+}
+
+// ── FORECAST ─────────────────────────────────────────────────────────────────
+function renderForecast(){
+  const mi=curMonth-1,yr=2026;
+  const dims=[31,28,31,30,31,30,31,31,30,31,30,31],totalDays=dims[mi];
+  let daysElapsed=1;
+  for(let d=totalDays;d>=1;d--){const k=`${yr}-${String(mi+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(RAW_DATA.employees.some(e=>e.daily_ot&&e.daily_ot[k]>0)){daysElapsed=d;break;}}
+  const daysLeft=totalDays-daysElapsed;
+  const fc=RAW_DATA.employees.map(e=>{
+    const mon=e.monthly_ots[mi]||0;
+    const rate=daysElapsed>0?mon/daysElapsed:0;
+    const projected=+(mon+rate*daysLeft).toFixed(1);
+    const daysToLimit=rate>0?Math.max(0,Math.ceil((MT-mon)/rate)):999;
+    return{...e,mon,rate:+rate.toFixed(2),projected,daysToLimit};
+  }).filter(e=>e.mon>0).sort((a,b)=>b.projected-a.projected);
+  const alreadyOver=fc.filter(e=>e.mon>MT).length;
+  const willExceed=fc.filter(e=>e.projected>MT&&e.mon<=MT);
+  const onTrack=fc.filter(e=>e.projected<=MT);
+  document.getElementById('kpiForecast').innerHTML=kpiHtml([
+    {cls:'r',lbl:'🚨 Already over limit',val:alreadyOver,sub:`>${MT}h this month`},
+    {cls:'y',lbl:'⚠ Will exceed by month-end',val:willExceed.length,sub:'at current pace'},
+    {cls:'g',lbl:'✅ Projected safe',val:onTrack.length,sub:`projected ≤ ${MT}h`},
+    {lbl:'📆 Days elapsed',val:daysElapsed,sub:`${daysLeft} days remaining (${MN[mi]})`},
+    {cls:RAW_DATA.employees.filter(e=>e.year_ot>YT).length>0?'r':'y',lbl:'📅 Over yearly limit',val:RAW_DATA.employees.filter(e=>e.year_ot>YT).length,sub:`exceeded ${YT}h/year`},
+  ]);
+  document.getElementById('fcSub1').textContent=`${willExceed.length} employees · ${MN[mi]} 2026`;
+  document.getElementById('fcSub2').textContent=`based on ${daysElapsed} days elapsed`;
+  const atRisk=fc.filter(e=>e.projected>MT).sort((a,b)=>b.projected-a.projected);
+  document.getElementById('tblAtRisk').innerHTML=atRisk.length
+    ?atRisk.map((e,i)=>{
+        const over=(e.projected-MT).toFixed(1);
+        const risk=e.daysToLimit<=3?`<span class="pill r">🔴 ${e.mon>MT?'Now':'≤3 days'}</span>`:e.daysToLimit<=7?`<span class="pill y">🟡 ${e.daysToLimit} days</span>`:`<span class="pill d">${e.daysToLimit} days</span>`;
+        return`<tr><td style="color:var(--dim)">${i+1}</td>
+          <td><b>${e.name}</b><div style="font-size:10px;color:var(--dim)">${e.id}</div></td>
+          <td style="font-weight:700;color:${clr(e.mon,MT)}">${e.mon}h</td>
+          <td style="font-weight:700;color:var(--red)">${e.projected}h <span style="font-size:10px;color:var(--dim)">(+${over}h)</span></td>
+          <td style="color:var(--dim)">${e.rate}h/day</td>
+          <td style="color:var(--dim)">${e.mon>MT?'Already over':`${e.daysToLimit} days`}</td>
+          <td>${risk}</td></tr>`;
+      }).join('')
+    :`<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--dim)">✅ No employees projected to exceed limit</td></tr>`;
+  const monthTotals=Array.from({length:6},(_,i)=>RAW_DATA.employees.reduce((s,e)=>s+(e.monthly_ots[i]||0),0));
+  const teamTarget=RAW_DATA.employees.length*MT;
+  destroyChart('cFc6M');
+  charts['cFc6M']=new Chart(document.getElementById('cFc6M').getContext('2d'),{
+    type:'line',
+    data:{labels:MN.slice(0,6),datasets:[
+      {label:'Team Total OT',data:monthTotals,borderColor:'#58a6ff',backgroundColor:'rgba(88,166,255,0.1)',borderWidth:2,pointRadius:4,tension:.4,fill:true},
+      {label:`Team Target (${teamTarget}h)`,data:Array(6).fill(teamTarget),borderColor:'#e24b4a',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:cc.tick,font:{size:11}}},tooltip:{backgroundColor:cc.tip,titleColor:'#e6edf3',bodyColor:cc.tick,borderColor:'#30363d',borderWidth:1}},
+      scales:{x:{grid:{color:cc.grid},ticks:{color:cc.tick,font:{size:10}}},y:{grid:{color:cc.grid},ticks:{color:cc.tick,font:{size:10}}}}}
+  });
+  const maxProj=Math.max(...fc.map(e=>e.projected),MT);
+  document.getElementById('fcBarsBody').innerHTML=fc.map(e=>{
+    const curP=(e.mon/maxProj*100).toFixed(1),projP=(e.projected/maxProj*100).toFixed(1),limP=(MT/maxProj*100).toFixed(1);
+    const addP=Math.max(0,projP-curP);
+    const c=e.projected>MT?'var(--red)':e.projected>=MT*.9?'var(--yellow)':'var(--green)';
+    return`<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+        <span style="font-size:12px;font-weight:600;">${short(e.name)}</span>
+        <span style="font-size:11px;"><span style="color:var(--blue)">${e.mon}h</span><span style="color:var(--dim)"> → </span><span style="color:${c};font-weight:700;">${e.projected}h</span></span>
+      </div>
+      <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;position:relative;">
+        <div style="position:absolute;top:0;left:0;width:${curP}%;height:100%;background:var(--blue);opacity:.8;"></div>
+        <div style="position:absolute;top:0;left:${curP}%;width:${addP}%;height:100%;background:${c};opacity:.6;"></div>
+        <div style="position:absolute;top:-2px;left:${limP}%;width:2px;height:14px;background:var(--red);"></div>
+      </div>
+      <div style="font-size:9px;color:var(--dim);margin-top:2px;">${e.rate}h/day rate · ${daysLeft} days left</div>
+    </div>`;
+  }).join('');
+  const yearRisk=[...RAW_DATA.employees].map(e=>{const active=e.monthly_ots.filter(v=>v>0).length||1;return{...e,pace:+(e.year_ot/active*12).toFixed(0)};}).filter(e=>e.year_ot>0).sort((a,b)=>b.year_ot-a.year_ot).slice(0,20);
+  const maxY=Math.max(...yearRisk.map(e=>Math.max(e.year_ot,e.pace)),YT);
+  document.getElementById('fcYearBody').innerHTML=yearRisk.map(e=>{
+    const cp=(e.year_ot/maxY*100).toFixed(1),lp=(YT/maxY*100).toFixed(1),rem=YT-e.year_ot;
+    const c=e.year_ot>YT?'var(--red)':e.year_ot>=YT*.8?'var(--yellow)':'var(--green)';
+    const pc=e.pace>YT?'var(--red)':e.pace>=YT*.8?'var(--yellow)':'var(--green)';
+    return`<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:11px;min-width:110px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${short(e.name)}</span>
+      <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;position:relative;">
+        <div style="width:${cp}%;height:100%;background:${c};border-radius:4px;"></div>
+        <div style="position:absolute;top:-2px;left:${lp}%;width:2px;height:12px;background:var(--red);opacity:.8;"></div>
+      </div>
+      <span style="font-size:11px;font-weight:700;min-width:36px;color:${c};">${e.year_ot}h</span>
+      <span class="pill ${e.year_ot>YT?'r':e.year_ot>=YT*.8?'y':'g'}" style="min-width:72px;justify-content:center;">${rem>=0?`${rem}h left`:`${Math.abs(rem)}h over`}</span>
+      <span style="font-size:10px;color:var(--dim);min-width:90px;">pace: <b style="color:${pc}">${e.pace}h/yr</b></span>
+    </div>`;
+  }).join('');
+}
+
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDashboard(){
+  const mi = curMonth - 1;
+  const emps = RAW_DATA.employees;
+
+  // KPI
+  const over  = emps.filter(e=>e.monthly_ots[mi]>MT).length;
+  const near  = emps.filter(e=>e.monthly_ots[mi]>=MT*.8&&e.monthly_ots[mi]<=MT).length;
+  const safe  = emps.filter(e=>e.monthly_ots[mi]<MT*.8&&e.monthly_ots[mi]>0).length;
+  const total = emps.reduce((s,e)=>s+(e.monthly_ots[mi]||0),0);
+  const yearOver = emps.filter(e=>e.year_ot>YT).length;
+  document.getElementById('kpiDash').innerHTML = kpiHtml([
+    {cls:'r', lbl:'🔴 Over Monthly Limit',   val:over,     sub:`Exceeded ${MT}h this month`},
+    {cls:'y', lbl:'🟡 Near Limit',           val:near,     sub:`80–100% of ${MT}h`},
+    {cls:'g', lbl:'🟢 Safe',                 val:safe,     sub:`Under 80% of target`},
+    {lbl:'⏱ Total OT This Month',           val:fmt(total)+'h', sub:`Avg ${emps.length?(total/emps.length).toFixed(1):0}h / person`},
+    {cls:yearOver>0?'r':'y', lbl:'📅 Over Yearly Limit', val:yearOver, sub:`Exceeded ${YT}h / year`},
+  ]);
+
+  // Weekly trend
+  const weekOTs={};
+  emps.forEach(e=>Object.entries(e.weekly_ot).forEach(([w,h])=>{weekOTs[+w]=(weekOTs[+w]||0)+h;}));
+  const wks=Object.keys(weekOTs).map(Number).sort((a,b)=>a-b);
+  const wVals=wks.map(w=>weekOTs[w]);
+  destroyChart('cDashWeek');
+  const ctxW = document.getElementById('cDashWeek');
+  charts['cDashWeek']=new Chart(ctxW,{
+    type:'line',
+    data:{labels:wks.map(w=>`W${w}`),datasets:[{
+      label:'Team OT (h)',data:wVals,
+      borderColor:'#58a6ff',backgroundColor:'rgba(88,166,255,0.1)',
+      borderWidth:2,pointRadius:3,tension:.4,fill:true
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:cc.tip,titleColor:'#e6edf3',bodyColor:cc.tick,borderColor:'#30363d',borderWidth:1}},
+      scales:{x:{grid:{color:cc.grid},ticks:{color:cc.tick,font:{size:10}}},
+              y:{grid:{color:cc.grid},ticks:{color:cc.tick,font:{size:10}}}}}
+  });
+
+  // Top 10 by year OT
+  const top10=[...emps].sort((a,b)=>b.year_ot-a.year_ot).slice(0,10);
+  document.getElementById('dashTop10Sub').textContent='Year-to-date · sorted by total';
+  destroyChart('cDashTop10');
+  charts['cDashTop10']=new Chart(document.getElementById('cDashTop10').getContext('2d'),{
+    type:'bar',
+    data:{labels:top10.map(e=>short(e.name)),datasets:[{
+      label:'Year OT (h)',data:top10.map(e=>e.year_ot),
+      backgroundColor:top10.map(e=>e.year_ot>YT?'rgba(248,81,73,0.85)':e.year_ot>=YT*.8?'rgba(227,179,65,0.85)':'rgba(88,166,255,0.75)'),
+      borderRadius:4
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{backgroundColor:cc.tip,titleColor:'#e6edf3',bodyColor:cc.tick,borderColor:'#30363d',borderWidth:1,
+        callbacks:{title:i=>top10[i[0].dataIndex]?.name||'',label:i=>`Year OT: ${i.raw}h`}}},
+      scales:{x:{grid:{color:cc.grid},ticks:{color:cc.tick,font:{size:10}}},
+              y:{grid:{color:cc.grid},ticks:{color:cc.tick,font:{size:10}}}}}
+  });
+
+  // Monthly bar Jan-Jun
+  const monthTotals=Array.from({length:6},(_,i)=>emps.reduce((s,e)=>s+(e.monthly_ots[i]||0),0));
+  destroyChart('cDashMonth');
+  charts['cDashMonth']=new Chart(document.getElementById('cDashMonth').getContext('2d'),{
+    type:'bar',
+    data:{labels:MN.slice(0,6),datasets:[{
+      label:'Team OT (h)',data:monthTotals,
+      backgroundColor:monthTotals.map((_,i)=>i===mi?'rgba(88,166,255,0.9)':'rgba(88,166,255,0.35)'),
+      borderRadius:4
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:cc.tip,titleColor:'#e6edf3',bodyColor:cc.tick,borderColor:'#30363d',borderWidth:1}},
+      scales:{x:{grid:{color:cc.grid},ticks:{color:cc.tick,font:{size:10}}},
+              y:{grid:{color:cc.grid},ticks:{color:cc.tick,font:{size:10}}}}}
+  });
+
+  // Status donut
+  const zero=emps.filter(e=>e.monthly_ots[mi]===0).length;
+  document.getElementById('dashStatusSub').textContent=MN[mi]+' 2026';
+  destroyChart('cDashStatus');
+  charts['cDashStatus']=new Chart(document.getElementById('cDashStatus').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:['Over limit','Near limit','Safe','No OT'],
+      datasets:[{data:[over,near,safe,zero],
+        backgroundColor:['rgba(248,81,73,0.85)','rgba(227,179,65,0.85)','rgba(63,185,80,0.75)','rgba(100,100,100,0.4)'],
+        borderColor:'#161b22',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{legend:{position:'bottom',labels:{color:cc.tick,font:{size:10},padding:8}},
+        tooltip:{backgroundColor:cc.tip,bodyColor:cc.tick,borderColor:'#30363d',borderWidth:1}}}
+  });
+
+  // Weekday vs Weekend donut
+  const wd=emps.reduce((s,e)=>s+(e.weekday_ot_by_month[mi]||0),0);
+  const we=emps.reduce((s,e)=>s+(e.weekend_ot_by_month[mi]||0),0);
+  document.getElementById('dashWDWESub').textContent=MN[mi]+' 2026';
+  destroyChart('cDashWDWE');
+  charts['cDashWDWE']=new Chart(document.getElementById('cDashWDWE').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:['Weekday OT','Benefit (Weekend)'],
+      datasets:[{data:[+wd.toFixed(1),+we.toFixed(1)],
+        backgroundColor:['rgba(88,166,255,0.85)','rgba(227,179,65,0.85)'],
+        borderColor:'#161b22',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{legend:{position:'bottom',labels:{color:cc.tick,font:{size:10},padding:8}},
+        tooltip:{backgroundColor:cc.tip,bodyColor:cc.tick,borderColor:'#30363d',borderWidth:1,
+          callbacks:{label:i=>`${i.label}: ${fmt(i.raw)}h (${((i.raw/(wd+we))*100).toFixed(0)}%)`}}}}
+  });
+  // Force resize all dashboard charts after render
+  setTimeout(()=>{
+    Object.values(charts).forEach(c=>{ try{c.resize();}catch(e){} });
+  }, 100);
+}
+
+
+
+// ── DATA SOURCE: dashboard_data.json (committed to the repo by GitHub Actions) ──
+// This is the single source of truth. Every visitor who opens this same GitHub
+// Pages URL fetches the exact same file, so everyone always sees identical,
+// up-to-date numbers — no per-browser upload, no Google Sheets, no manual sync.
+// See scripts/parse_excel.py and .github/workflows/update-dashboard.yml.
+const DATA_URL = './dashboard_data.json';
+let dataSource = 'none'; // 'json' | 'local-preview' | 'none'
+
+function applyTargetsFromData(data){
+  if (data && data.targets) {
+    if (typeof data.targets.monthly === 'number') MT = data.targets.monthly;
+    if (typeof data.targets.weekly  === 'number') WT = data.targets.weekly;
+    if (typeof data.targets.daily   === 'number') DT = data.targets.daily;
+    if (typeof data.targets.yearly  === 'number') YT = data.targets.yearly;
+  }
+}
+
+function applyLoadedData(data, sourceLabel){
+  RAW_DATA.employees = data.employees || [];
+  RAW_DATA.updatedAt = data.updatedAt || null;
+  RAW_DATA.fileName  = data.fileName  || '';
+  applyTargetsFromData(data);
+  let lm = 0;
+  RAW_DATA.employees.forEach(e => {
+    const m = (e.monthly_ots||[]).reduce((x,v,i) => v>0?i:x, 0);
+    if (m > lm) lm = m;
+  });
+  curMonth = lm + 1;
+  document.getElementById('selMonth').value = curMonth;
+  const fi = document.getElementById('fileInfo');
+  fi.style.cssText = 'display:inline-flex;align-items:center;gap:4px;';
+  document.getElementById('fileName').textContent = RAW_DATA.fileName || sourceLabel;
+  if (RAW_DATA.updatedAt) {
+    const d = new Date(RAW_DATA.updatedAt);
+    document.getElementById('lastUpdated').textContent =
+      '🕒 Updated: ' + d.toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  }
+  dataSource = sourceLabel;
+}
+
+// Fetch the committed JSON. `no-store` + a cache-busting query param make sure
+// every viewer always gets the freshest file rather than a stale cached copy
+// (this is what guarantees everyone-sees-the-same-data on a shared link).
+async function loadFromJSON() {
+  try {
+    const resp = await fetch(`${DATA_URL}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    if (!data.employees || !data.employees.length) return false;
+    applyLoadedData(data, 'json');
+    return true;
+  } catch(err) {
+    console.warn('dashboard_data.json load failed:', err.message);
+    return false;
+  }
+}
+
+async function initDashboard() {
+  document.getElementById('kpiDash').innerHTML =
+    '<div style="color:var(--dim);font-size:12px;padding:10px;display:flex;align-items:center;gap:8px;">☁️ Loading data...</div>';
+  const loaded = await loadFromJSON();
+  if (loaded) {
+    toast('✅ Loaded latest data from GitHub', 'ok');
+  } else {
+    toast('⚠ Could not load data/dashboard_data.json — is it published?', 'err');
+  }
+  renderDashboard();
+}
+
+// ── UPLOAD ────────────────────────────────────────────────────────────────────
+function parseNum(v){if(v===null||v===undefined||v==='-'||v==='')return 0;const n=parseFloat(v);return isNaN(n)?0:n;}
+function handleUpload(e){
+  const file=e.target.files[0];if(!file)return;e.target.value='';toast('Reading file (local preview only)...');
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'binary',cellDates:true});
+      let sh=wb.SheetNames.find(s=>s.trim().toLowerCase()==='monitoring');
+      if(!sh)sh=wb.SheetNames.find(s=>s.toLowerCase().includes('monitoring')&&!s.includes('('));
+      if(!sh)sh=wb.SheetNames.find(s=>s.toLowerCase().includes('monitoring'));
+      if(!sh){toast('❌ Sheet "monitoring" not found','err');return;}
+      const parsed=parseSheet(XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1,defval:null}));
+      if(parsed&&parsed.length){
+        RAW_DATA.employees=parsed;
+        RAW_DATA.updatedAt=new Date().toISOString();
+        RAW_DATA.fileName=file.name;
+        let lm=0;parsed.forEach(e=>{const m=e.monthly_ots.reduce((x,v,i)=>v>0?i:x,0);if(m>lm)lm=m;});
+        curMonth=lm+1;document.getElementById('selMonth').value=curMonth;
+        selDay=null;selWeek=null;
+        const fi=document.getElementById('fileInfo');fi.style.cssText='display:inline-flex;align-items:center;gap:4px;';
+        document.getElementById('fileName').textContent=file.name+' (local preview)';
+        dataSource='local-preview';
+        refreshAll();
+        toast(`👁 Local preview only — ${parsed.length} employees. This is NOT saved or shared. To publish for everyone, commit this Excel file to the repo's data/ folder on GitHub.`,'ok');
+      }else toast('⚠ No employee data found','err');
+    }catch(err){toast('❌ '+err.message,'err');console.error(err);}
+  };
+  r.readAsBinaryString(file);
+}
+function parseSheet(json){
+  const hr=json.findIndex(r=>r&&r.some(c=>c&&String(c).toLowerCase().includes('full name')));
+  if(hr<0)return null;
+  const h=json[hr];
+  const cID=h.findIndex(c=>c&&String(c).toLowerCase().includes('id'));
+  const cN=h.findIndex(c=>c&&String(c).toLowerCase().includes('full name'));
+  const cP=h.findIndex(c=>c&&String(c).toLowerCase().includes('position'));
+  const cS=h.findIndex(c=>c&&String(c).toLowerCase()==='shift');
+  if(cID<0||cN<0)return null;
+  let yr=new Date().getFullYear();
+  for(let r=0;r<hr;r++){const row=json[r];if(!row)continue;for(const c of row){if(c instanceof Date&&c.getFullYear()>2000){yr=c.getFullYear();break;}}}
+  const cdm={};const sd=new Set();
+  h.forEach((c,i)=>{if(c instanceof Date&&Math.abs(c.getFullYear()-yr)<=1){const k=`${c.getFullYear()}-${c.getMonth()}-${c.getDate()}`;if(!sd.has(k)){cdm[i]=new Date(c.getFullYear(),c.getMonth(),c.getDate());sd.add(k);}}});
+  const sr=json[hr+1]||[];const cc2=[];sr.forEach((v,i)=>{if(v&&i>8){const s=String(v).toLowerCase();if(s.includes('ch')&&(s.includes('th')||s.includes('nh')))cc2.push(i);}});
+  const emps=[];
+  for(let r=hr+1;r<json.length-1;r++){
+    const row=json[r];if(!row)continue;
+    const sv=String(row[cS]||'').trim();
+    if(!sv.includes('D-shift')&&!sv.toLowerCase().includes('d-shift'))continue;
+    const id=row[cID]!=null?String(row[cID]).trim():'';
+    if(!id||id==='None'||id==='')continue;
+    let otr=null;
+    for(let off=1;off<=3;off++){const cr=json[r+off];if(!cr)continue;const s=String(cr[cS]||'').toLowerCase();if(s.includes('overtime')){otr=cr;break;}if(off===2&&s.includes('d-shift')){otr=cr;break;}}
+    if(!otr)continue;
+    const wdm=Array(12).fill(0),wem=Array(12).fill(0),wk={},dOT={};
+    Object.entries(cdm).forEach(([col,date])=>{const v=parseNum(otr[+col]);if(!v)return;const mo=date.getMonth(),dow=date.getDay();if(dow===0||dow===6)wem[mo]+=v;else wdm[mo]+=v;const w=isoWeek(date);wk[w]=(wk[w]||0)+v;const dk=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;dOT[dk]=v;});
+    const monthly=Array(12).fill(0).map((_,mi)=>{if(mi<cc2.length){const n=parseNum(otr[cc2[mi]+1]);if(n>0)return n;}return +((wdm[mi]+wem[mi]).toFixed(1));});
+    const yr_ot=+monthly.reduce((a,b)=>a+b,0).toFixed(1);
+    if(!yr_ot)continue;
+    emps.push({id,name:row[cN]?String(row[cN]).trim():'',position:cP>=0&&row[cP]?String(row[cP]).trim():'',year_ot:yr_ot,monthly_ots:monthly,weekday_ot_by_month:wdm.map(v=>+v.toFixed(1)),weekend_ot_by_month:wem.map(v=>+v.toFixed(1)),weekly_ot:Object.fromEntries(Object.entries(wk).map(([k,v])=>[k,+v.toFixed(1)])),daily_ot:dOT});
+  }
+  emps.sort((a,b)=>b.year_ot-a.year_ot);return emps;
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function doExport(){
+  const mi=curMonth-1;
+  const rows=[['ID','Name','Position','Monthly OT (h)','Used %','Remaining (h)','Year OT (h)','Status','Notes']];
+  RAW_DATA.employees.forEach(e=>{const m=e.monthly_ots[mi]||0;const s=m>MT?'Stop OT':m>=MT*.8?'Monitor':'Available';rows.push([e.id,e.name,e.position||'',m,((m/MT)*100).toFixed(0)+'%',(MT-m).toFixed(1),e.year_ot,s,notes[e.id]||'']);});
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:10},{wch:24},{wch:12},{wch:14},{wch:8},{wch:14},{wch:12},{wch:12},{wch:24}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,`OT_${MN[mi]}_2026`);
+  XLSX.writeFile(wb,`OT_${MN[mi]}_2026.xlsx`);toast('✅ Exported!');
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+const pageMap={dashboard:'pageDashboardEl',daily:'pageDailyEl',weekly:'pageWeeklyEl',monthly:'pageMonthlyEl',adjust:'pageAdjustEl',forecast:'pageForecastEl'};
+const tabCls={dashboard:'',daily:'tr',weekly:'ty',monthly:'tr',adjust:'tg',forecast:''};
+let curTab='daily';
+function switchTab(key,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(pageMap[key]).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active','tr','ty','tg'));
+  btn.classList.add('active');if(tabCls[key])btn.classList.add(tabCls[key]);
+  curTab=key;
+  destroyChartsForPage(key);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>renderTab(key)));
+}
+
+function destroyChartsForPage(key){
+  const pageEl = document.getElementById(pageMap[key]);
+  if(!pageEl) return;
+  pageEl.querySelectorAll('canvas').forEach(cv=>{
+    const id = cv.id;
+    if(charts[id]){ charts[id].destroy(); delete charts[id]; }
+    cv.removeAttribute('width');
+    cv.removeAttribute('height');
+    cv.style.width = '';
+    cv.style.height = '';
+  });
+}
+function renderTab(k){
+  if(k==='dashboard')initDashboard();
+  else if(k==='daily'){buildDayPicker();renderDaily();}
+  else if(k==='weekly'){buildWeekPicker();renderWeekly();}
+  else if(k==='monthly')renderMonthly();
+  else if(k==='adjust')renderAdjust();
+  else renderForecast();
+}
+function onMonthChange(){curMonth=+document.getElementById('selMonth').value;selDay=null;selWeek=null;refreshAll();}
+function refreshAll(){renderTab(curTab);}
+initDashboard();
+</script>
+</body>
+</html>
