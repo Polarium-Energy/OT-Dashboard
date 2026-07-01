@@ -355,7 +355,11 @@ function lolliChart(id,labels,vals,target,tColor,yLbl,empArr){
 // ── DAILY ─────────────────────────────────────────────────────────────────────
 function buildDayPicker(){
   const mi=curMonth-1,yr=2026,dims=[31,28,31,30,31,30,31,31,30,31,30,31],days=dims[mi];
-  if(selDay===null){for(let d=days;d>=1;d--){const k=`${yr}-${String(mi+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(RAW_DATA.employees.some(e=>e.daily_ot&&e.daily_ot[k]>0)){selDay=d;break;}}}
+  if(selDay===null||selDay>days){
+    let found=false;
+    for(let d=days;d>=1;d--){const k=`${yr}-${String(mi+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(RAW_DATA.employees.some(e=>e.daily_ot&&e.daily_ot[k]>0)){selDay=d;found=true;break;}}
+    if(!found) selDay=days;
+  }
   const wrap=document.getElementById('dayPicker');wrap.innerHTML='';
   for(let d=1;d<=days;d++){
     const k=`${yr}-${String(mi+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
