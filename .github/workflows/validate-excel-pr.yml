@@ -1,0 +1,28 @@
+name: Validate Excel Format (PR check)
+
+on:
+  pull_request:
+    paths:
+      - "*.xlsx"
+      - "parse_excel.py"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install openpyxl
+
+      - name: Try parsing every workbook at repo root
+        run: |
+          set -e
+          for f in *.xlsx; do
+            echo "::group::Validating $f"
+            python parse_excel.py "$f" /tmp/preview.json
+            echo "::endgroup::"
+          done
