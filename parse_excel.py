@@ -69,7 +69,7 @@ except ImportError:
     sys.exit("Missing dependency: run `pip install openpyxl` first.")
 
 MONTH_TARGET = 40      # h / person / month
-WEEK_TARGET = 40        # h / person / week
+WEEK_TARGET = 10        # h / person / week
 DAY_TARGET = 2           # h / person / day
 YEAR_TARGET = 300       # h / person / year (informational only)
 

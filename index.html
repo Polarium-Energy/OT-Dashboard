@@ -211,7 +211,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
     </div>
     <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px;min-height:0;">
       <div class="card">
-        <div class="card-hdr"><span class="dot" style="background:var(--red)"></span><span class="card-title" id="dailyChartTitle">Daily OT</span><span class="card-sub">Target: 2h / person</span></div>
+        <div class="card-hdr"><span class="dot" style="background:var(--red)"></span><span class="card-title" id="dailyChartTitle">Daily OT</span><span class="card-sub" id="dailyTargetLabel">Target: 2h / person</span></div>
         <div class="card-body"><div class="chart-wrap"><canvas id="cDaily" role="img" aria-label="Daily OT per person"></canvas></div></div>
       </div>
       <div class="card">
@@ -235,7 +235,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
     </div>
     <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px;min-height:0;">
       <div class="card">
-        <div class="card-hdr"><span class="dot" style="background:var(--yellow)"></span><span class="card-title" id="weeklyChartTitle">Weekly OT</span><span class="card-sub">Target: 40h / person / week</span></div>
+        <div class="card-hdr"><span class="dot" style="background:var(--yellow)"></span><span class="card-title" id="weeklyChartTitle">Weekly OT</span><span class="card-sub" id="weeklyTargetLabel">Target: 40h / person / week</span></div>
         <div class="card-body"><div class="chart-wrap"><canvas id="cWeekly" role="img" aria-label="Weekly OT per person"></canvas></div></div>
       </div>
       <div class="card">
@@ -252,7 +252,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
     <div class="kpi-bar" id="kpiMonthly"></div>
     <div style="display:grid;grid-template-columns:1fr 1.8fr;gap:12px;min-height:0;">
       <div class="card">
-        <div class="card-hdr"><span class="dot" style="background:var(--red)"></span><span class="card-title" id="monthlyChartTitle">Monthly OT</span><span class="card-sub">Target: 40h / person / month (Mon–Sun)</span></div>
+        <div class="card-hdr"><span class="dot" style="background:var(--red)"></span><span class="card-title" id="monthlyChartTitle">Monthly OT</span><span class="card-sub" id="monthlyTargetLabel">Target: 40h / person / month (Mon–Sun)</span></div>
         <div class="card-body"><div class="chart-wrap"><canvas id="cMonthly" role="img" aria-label="Monthly OT per person"></canvas></div></div>
       </div>
       <div class="card">
@@ -310,7 +310,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 const RAW_DATA = {"employees": [], "updatedAt": null, "fileName": ""};
 Chart.defaults.animation = false;
 Chart.defaults.devicePixelRatio = 1;
-let MT=40,WT=40,DT=2,YT=300;
+let MT=40,WT=10,DT=2,YT=300;
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 let curMonth=6,selDay=null,selWeek=null,charts={},notes={};
@@ -774,6 +774,16 @@ function applyTargetsFromData(data){
     if (typeof data.targets.daily   === 'number') DT = data.targets.daily;
     if (typeof data.targets.yearly  === 'number') YT = data.targets.yearly;
   }
+  syncTargetLabels();
+}
+
+function syncTargetLabels(){
+  const d=document.getElementById('dailyTargetLabel');
+  const w=document.getElementById('weeklyTargetLabel');
+  const m=document.getElementById('monthlyTargetLabel');
+  if(d) d.textContent=`Target: ${DT}h / person`;
+  if(w) w.textContent=`Target: ${WT}h / person / week`;
+  if(m) m.textContent=`Target: ${MT}h / person / month (Mon–Sun)`;
 }
 
 function applyLoadedData(data, sourceLabel){
@@ -816,10 +826,13 @@ async function loadFromJSON() {
   }
 }
 
+let dataLoadedOnce = false;
 async function initDashboard() {
+  if (dataLoadedOnce) { renderDashboard(); return; }
   document.getElementById('kpiDash').innerHTML =
     '<div style="color:var(--dim);font-size:12px;padding:10px;display:flex;align-items:center;gap:8px;">☁️ Loading data...</div>';
   const loaded = await loadFromJSON();
+  dataLoadedOnce = true;
   if (loaded) {
     toast('✅ Loaded latest data from GitHub', 'ok');
   } else {
